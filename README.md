@@ -1,16 +1,13 @@
 # flutter_fractal_onboarding_poc
 
-A new Flutter project.
+Una aplicación Flutter para la validación de identidad mediante reconocimiento facial, diseñada para autenticar usuarios a través de la detección y validación de poses faciales.
 
-## Getting Started
 
-This project is a starting point for a Flutter application.
+## 🛠️ Configuración del Entorno
 
-A few resources to get you started if this is your first Flutter project:
+1. Asegúrate de tener Flutter SDK instalado (versión 3.27.0 o superior)
+2. Clona el repositorio
+3. Ejecuta `flutter packages get` para instalar dependencias
+4. Conecta un dispositivo o inicia un emulador
+5. Ejecuta `flutter run` para iniciar la aplicación
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
