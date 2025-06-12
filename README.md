@@ -1,4 +1,4 @@
-# flutter_fractal_onboarding_poc
+# Fractal Onboarding POC
 
 Una aplicación Flutter para la validación de identidad mediante reconocimiento facial, diseñada para autenticar usuarios a través de la detección y validación de poses faciales.
 
