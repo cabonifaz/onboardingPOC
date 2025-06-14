@@ -77,13 +77,52 @@ class _FacePoseBodyState extends State<FacePoseBody>
   }
 
   Future<void> _requestCameraPermission() async {
-    final status = await Permission.camera.request();
-    setState(() {
-      _hasPermission = status.isGranted;
-    });
+    // Verificar si ya tenemos permisos
+    var status = await Permission.camera.status;
 
-    if (_hasPermission) {
-      await _initializeCamera();
+    // Si los permisos están denegados permanentemente, mostrar diálogo para abrir configuración
+    if (status.isPermanentlyDenied) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) => AlertDialog(
+            title: const Text('Permiso de cámara requerido'),
+            content: const Text(
+                'La aplicación necesita acceso a la cámara para la detección facial. '
+                'Por favor, habilita el permiso en la configuración.'),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('Cancelar'),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              TextButton(
+                child: const Text('Abrir configuración'),
+                onPressed: () {
+                  openAppSettings();
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
+    // Si no tenemos permisos, solicitarlos
+    if (!status.isGranted) {
+      status = await Permission.camera.request();
+    }
+
+    // Actualizar el estado
+    if (mounted) {
+      setState(() {
+        _hasPermission = status.isGranted;
+      });
+
+      if (_hasPermission) {
+        await _initializeCamera();
+      }
     }
   }
 
@@ -100,17 +139,21 @@ class _FacePoseBodyState extends State<FacePoseBody>
         frontCamera,
         ResolutionPreset.medium,
         enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.nv21, // Formato requerido por ML Kit
       );
 
       await _cameraController!.initialize();
+
+      if (!mounted) return;
+
+      // Iniciar el stream de imágenes
       await _cameraController!.startImageStream(_processCameraImage);
 
-      if (mounted) {
-        setState(() {
-          _isCameraInitialized = true;
-        });
-      }
+      setState(() {
+        _isCameraInitialized = true;
+      });
     } catch (e) {
+      debugPrint('Error al inicializar la cámara: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error al inicializar la cámara: $e')),

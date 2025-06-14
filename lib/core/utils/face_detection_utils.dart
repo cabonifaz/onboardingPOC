@@ -4,23 +4,23 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 class FaceDetectionUtils {
   // Tolerances and thresholds optimized for better accuracy
-  static const double straightTolerance =
-      25.0; // Slightly reduced for better precision
-  static const double eyeOpenThreshold =
-      0.3; // Slightly increased for better eye detection
-  static const double smileThreshold =
-      0.6; // Slightly increased to reduce false positives
-  static const int holdTimeMs =
-      1000; // Increased hold time for better user experience
+  static const double eyeOpenThreshold = 0.3; // For eye detection
+  static const double smileThreshold = 0.6; // For smile detection
+  static const int holdTimeMs = 1000; // Hold time for better user experience
 
   // Head rotation angles (in degrees)
-  static const double minTurnAngle = 20.0; // Minimum angle to detect a turn
-  static const double maxTurnAngle = 50.0; // Maximum allowed turn angle
+  static const double targetTurnAngle =
+      30.0; // Target angle for left/right turns
+  static const double turnTolerance = 10.0; // Tolerance for turn angles
 
-  // Individual angle tolerances for straight pose
-  static const double yawTolerance = 25.0;
-  static const double pitchTolerance = 20.0;
-  static const double rollTolerance = 20.0;
+  // Minimum and maximum turn angles based on target and tolerance
+  static const double minTurnAngle = targetTurnAngle - turnTolerance;
+  static const double maxTurnAngle = targetTurnAngle + turnTolerance;
+
+  // Individual angle tolerances for straight pose (reduced to 15 degrees)
+  static const double yawTolerance = 15.0; // Reduced from 25.0
+  static const double pitchTolerance = 15.0; // Reduced from 20.0
+  static const double rollTolerance = 15.0; // Reduced from 20.0
 
   /// Verifica si la cara está mirando al frente
   static bool isLookingStraight(Face face) {
