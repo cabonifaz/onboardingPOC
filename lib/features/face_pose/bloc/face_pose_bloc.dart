@@ -216,17 +216,32 @@ class FacePoseBloc extends Bloc<FacePoseEvent, FacePoseState> {
       _isProcessing = true;
 
       try {
+        // For the first pose (looking straight), add a 2-second delay
+        if (newState is FacePoseLookingStraight) {
+          // Show a countdown message
+          for (int i = 2; i > 0; i--) {
+            emit(FacePoseProcessing(
+              processingMessage: 'Mantén la posición... $i',
+              progress: (2 - i) / 2, // Progress from 0 to 0.5
+              previousState: newState,
+              headEulerAngleY: event.face.headEulerAngleY,
+              remainingDegreesMessage: remainingDegreesMessage,
+            ));
+            await Future.delayed(const Duration(seconds: 1));
+          }
+        }
+        
         // Transition to processing state
         emit(FacePoseProcessing(
-          processingMessage: 'Procesando...',
-          progress: 0.0,
+          processingMessage: 'Guardando imagen...',
+          progress: 0.5,
           previousState: newState,
           headEulerAngleY: event.face.headEulerAngleY,
           remainingDegreesMessage: remainingDegreesMessage,
         ));
 
         // Add a small delay to show the processing state
-        await Future.delayed(const Duration(milliseconds: 500));
+        await Future.delayed(const Duration(milliseconds: 300));
 
         // Determine the next state
         FacePoseState nextState;
@@ -292,9 +307,8 @@ class FacePoseBloc extends Bloc<FacePoseEvent, FacePoseState> {
           ? (state as FacePoseProcessing).previousState
           : state;
 
-      // Get the current head angle from the state if available
-      final currentHeadAngle =
-          currentState is FacePoseState ? currentState.headEulerAngleY : 0.0;
+      // Get the current head angle from the state
+      final currentHeadAngle = currentState.headEulerAngleY ?? 0.0;
 
       // Save the image based on the current state
       try {
