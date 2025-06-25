@@ -40,7 +40,7 @@ class ImageSaveException extends FacePoseException {
 class IncompleteImagesException extends FacePoseException {
   final List<String> missingPoses;
 
-  IncompleteImagesException(this.missingPoses, [Object? cause])
+  IncompleteImagesException({required this.missingPoses, Object? cause})
       : super(
           'Missing required images for poses: ${missingPoses.join(', ')}',
           cause,

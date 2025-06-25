@@ -1,16 +1,33 @@
 part of 'face_pose_bloc.dart';
 
 abstract class FacePoseState extends Equatable {
-  const FacePoseState();
+  final double? headEulerAngleY;
+  final String remainingDegreesMessage;
+
+  const FacePoseState({
+    this.headEulerAngleY,
+    this.remainingDegreesMessage = '',
+  });
 
   @override
-  List<Object?> get props => [];
-
+  List<Object?> get props => [headEulerAngleY, remainingDegreesMessage];
+  
+  FacePoseState copyWith({
+    double? headEulerAngleY,
+    String? remainingDegreesMessage,
+  });
+  
   String get message {
     if (this is FacePoseInitial) return 'Mira al frente';
     if (this is FacePoseLookingStraight) return 'Mantén la posición';
-    if (this is FacePoseTurnedRight) return 'Gira la cabeza a la derecha';
-    if (this is FacePoseTurnedLeft) return 'Gira la cabeza a la izquierda';
+    if (this is FacePoseTurnedRight) {
+      final angle = headEulerAngleY?.toStringAsFixed(1) ?? '0.0';
+      return 'Gira la cabeza a la derecha ($angle°)';
+    }
+    if (this is FacePoseTurnedLeft) {
+      final angle = headEulerAngleY?.abs().toStringAsFixed(1) ?? '0.0';
+      return 'Gira la cabeza a la izquierda ($angle°)';
+    }
     if (this is FacePoseCompleted) return '¡Validación completada!';
     if (this is FacePoseError) return (this as FacePoseError).message;
     if (this is FacePosePaused) return 'Validación en pausa';
@@ -19,19 +36,108 @@ abstract class FacePoseState extends Equatable {
 }
 
 class FacePoseInitial extends FacePoseState {
-  const FacePoseInitial();
+  const FacePoseInitial() : super();
+  
+  @override
+  FacePoseInitial copyWith({
+    double? headEulerAngleY,
+    String? remainingDegreesMessage,
+  }) {
+    return FacePoseInitial();
+  }
 }
 
 class FacePoseLookingStraight extends FacePoseState {
-  const FacePoseLookingStraight();
+  const FacePoseLookingStraight({
+    super.headEulerAngleY,
+    super.remainingDegreesMessage = '',
+  });
+
+  @override
+  String get message => 'Mantén la posición$remainingDegreesMessage';
+  
+  @override
+  FacePoseLookingStraight copyWith({
+    double? headEulerAngleY,
+    String? remainingDegreesMessage,
+  }) {
+    return FacePoseLookingStraight(
+      headEulerAngleY: headEulerAngleY ?? this.headEulerAngleY,
+      remainingDegreesMessage: remainingDegreesMessage ?? this.remainingDegreesMessage,
+    );
+  }
+  
+  @override
+  @override
+  List<Object?> get props => [
+        headEulerAngleY,
+        remainingDegreesMessage,
+        runtimeType,
+      ];
 }
 
 class FacePoseTurnedRight extends FacePoseState {
-  const FacePoseTurnedRight();
+  const FacePoseTurnedRight({
+    super.headEulerAngleY,
+    super.remainingDegreesMessage = '',
+  });
+
+  @override
+  String get message {
+    final angle = headEulerAngleY?.toStringAsFixed(1) ?? '0.0';
+    return 'Gira la cabeza a la derecha ($angle°)$remainingDegreesMessage';
+  }
+  
+  @override
+  FacePoseTurnedRight copyWith({
+    double? headEulerAngleY,
+    String? remainingDegreesMessage,
+  }) {
+    return FacePoseTurnedRight(
+      headEulerAngleY: headEulerAngleY ?? this.headEulerAngleY,
+      remainingDegreesMessage: remainingDegreesMessage ?? this.remainingDegreesMessage,
+    );
+  }
+  
+  @override
+  @override
+  List<Object?> get props => [
+        headEulerAngleY,
+        remainingDegreesMessage,
+        runtimeType,
+      ];
 }
 
 class FacePoseTurnedLeft extends FacePoseState {
-  const FacePoseTurnedLeft();
+  const FacePoseTurnedLeft({
+    super.headEulerAngleY,
+    super.remainingDegreesMessage = '',
+  });
+
+  @override
+  String get message {
+    final angle = headEulerAngleY?.abs().toStringAsFixed(1) ?? '0.0';
+    return 'Gira la cabeza a la izquierda ($angle°)$remainingDegreesMessage';
+  }
+  
+  @override
+  FacePoseTurnedLeft copyWith({
+    double? headEulerAngleY,
+    String? remainingDegreesMessage,
+  }) {
+    return FacePoseTurnedLeft(
+      headEulerAngleY: headEulerAngleY ?? this.headEulerAngleY,
+      remainingDegreesMessage: remainingDegreesMessage ?? this.remainingDegreesMessage,
+    );
+  }
+  
+  @override
+  @override
+  List<Object?> get props => [
+        headEulerAngleY,
+        remainingDegreesMessage,
+        runtimeType,
+      ];
 }
 
 class FacePoseCompleted extends FacePoseState {
@@ -43,7 +149,19 @@ class FacePoseCompleted extends FacePoseState {
     required this.frontImagePath,
     required this.rightImagePath,
     required this.leftImagePath,
-  });
+  }) : super();
+
+  @override
+  FacePoseCompleted copyWith({
+    double? headEulerAngleY,
+    String? remainingDegreesMessage,
+  }) {
+    return FacePoseCompleted(
+      frontImagePath: frontImagePath,
+      rightImagePath: rightImagePath,
+      leftImagePath: leftImagePath,
+    );
+  }
 
   @override
   List<Object> get props => [frontImagePath, rightImagePath, leftImagePath];
@@ -53,13 +171,35 @@ class FacePoseError extends FacePoseState {
   @override
   final String message;
 
-  const FacePoseError(this.message);
+  const FacePoseError(this.message) : super();
+
+  @override
+  FacePoseError copyWith({
+    double? headEulerAngleY,
+    String? remainingDegreesMessage,
+  }) {
+    return FacePoseError(message);
+  }
 
   @override
   List<Object> get props => [message];
 }
 
 class FacePoseDetected extends FacePoseState {
+  @override
+  FacePoseDetected copyWith({
+    double? headEulerAngleY,
+    String? remainingDegreesMessage,
+  }) {
+    return FacePoseDetected(
+      headEulerAngleY: headEulerAngleY ?? this.headEulerAngleY ?? 0,
+      headEulerAngleX: headEulerAngleX,
+      headEulerAngleZ: headEulerAngleZ,
+      smilingProbability: smilingProbability,
+      leftEyeOpenProbability: leftEyeOpenProbability,
+      rightEyeOpenProbability: rightEyeOpenProbability,
+    );
+  }
   final Face face;
   final DateTime timestamp;
 
@@ -85,6 +225,7 @@ class FacePoseDetected extends FacePoseState {
         timestamp = DateTime.now();
 
   // Delegar las propiedades a la instancia de Face
+  @override
   double? get headEulerAngleY => face.headEulerAngleY;
   double? get headEulerAngleX => face.headEulerAngleX;
   double? get headEulerAngleZ => face.headEulerAngleZ;
@@ -108,36 +249,74 @@ class FacePoseDetected extends FacePoseState {
 }
 
 class FacePoseProcessing extends FacePoseState {
-  @override
-  final String message;
+  final String processingMessage;
   final double progress;
   final FacePoseState previousState;
 
   const FacePoseProcessing({
-    required this.message,
+    required this.processingMessage,
     required this.progress,
     required this.previousState,
+    super.headEulerAngleY,
+    super.remainingDegreesMessage = '',
   });
 
   @override
-  List<Object> get props => [message, progress, previousState];
+  String get message => processingMessage;
 
+  @override
+  List<Object> get props => [
+        processingMessage,
+        progress,
+        previousState,
+        headEulerAngleY ?? 0.0,
+        remainingDegreesMessage,
+      ];
+
+  @override
   FacePoseProcessing copyWith({
-    String? message,
+    double? headEulerAngleY,
+    String? remainingDegreesMessage,
+  }) {
+    return FacePoseProcessing(
+      processingMessage: processingMessage,
+      progress: progress,
+      previousState: previousState,
+      headEulerAngleY: headEulerAngleY ?? this.headEulerAngleY,
+      remainingDegreesMessage: remainingDegreesMessage ?? this.remainingDegreesMessage,
+    );
+  }
+  
+  // Additional method for updating processing-specific fields
+  FacePoseProcessing updateProcessing({
+    String? processingMessage,
     double? progress,
     FacePoseState? previousState,
   }) {
     return FacePoseProcessing(
-      message: message ?? this.message,
+      processingMessage: processingMessage ?? this.processingMessage,
       progress: progress ?? this.progress,
       previousState: previousState ?? this.previousState,
+      headEulerAngleY: headEulerAngleY,
+      remainingDegreesMessage: remainingDegreesMessage,
     );
   }
 }
 
 class FacePosePaused extends FacePoseState {
   const FacePosePaused();
+  
+  @override
+  FacePosePaused copyWith({
+    double? headEulerAngleY,
+    String? remainingDegreesMessage,
+  }) {
+    return const FacePosePaused();
+  }
 
   @override
-  List<Object> get props => [];
+  String get message => '';
+
+  @override
+  List<Object?> get props => [];
 }

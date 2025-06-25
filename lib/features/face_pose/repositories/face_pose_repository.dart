@@ -186,7 +186,7 @@ class FacePoseRepository {
       if (images.frontImagePath == null) missing.add('frente');
       if (images.rightImagePath == null) missing.add('perfil derecho');
       if (images.leftImagePath == null) missing.add('perfil izquierdo');
-      throw IncompleteImagesException(missing);
+      throw IncompleteImagesException(missingPoses: missing);
     }
     return images;
   }

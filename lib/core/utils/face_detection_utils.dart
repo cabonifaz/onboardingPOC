@@ -14,13 +14,13 @@ class FaceDetectionUtils {
   static const double turnTolerance = 10.0; // Tolerance for turn angles
 
   // Minimum and maximum turn angles based on target and tolerance
-  static const double minTurnAngle = targetTurnAngle - turnTolerance;
-  static const double maxTurnAngle = targetTurnAngle + turnTolerance;
+  static const double minTurnAngle = targetTurnAngle - turnTolerance; // 20°
+  static const double maxTurnAngle = targetTurnAngle + turnTolerance; // 40°
 
   // Individual angle tolerances for straight pose (reduced to 15 degrees)
-  static const double yawTolerance = 15.0; // Reduced from 25.0
-  static const double pitchTolerance = 15.0; // Reduced from 20.0
-  static const double rollTolerance = 15.0; // Reduced from 20.0
+  static const double yawTolerance = 10.0; // Reduced from 25.0
+  static const double pitchTolerance = 10.0; // Reduced from 20.0
+  static const double rollTolerance = 10.0; // Reduced from 20.0
 
   /// Verifica si la cara está mirando al frente
   static bool isLookingStraight(Face face) {
@@ -100,6 +100,24 @@ class FaceDetectionUtils {
     final isSmiling = (face.smilingProbability ?? 0) > smileThreshold;
     log('isSmiling - Value: ${face.smilingProbability}, Valid: $isSmiling');
     return isSmiling;
+  }
+
+  /// Obtiene los grados restantes para alcanzar la pose correcta
+  static double? getRemainingDegrees(Face face, Type currentState) {
+    final yaw = face.headEulerAngleY ?? 0.0;
+    
+    if (currentState == FacePoseLookingStraight) {
+      final yawAbs = yaw.abs();
+      return yawAbs > yawTolerance ? yawAbs - yawTolerance : 0.0;
+    } else if (currentState == FacePoseTurnedRight) {
+      if (yaw >= maxTurnAngle) return 0.0;
+      return yaw < minTurnAngle ? minTurnAngle - yaw : 0.0;
+    } else if (currentState == FacePoseTurnedLeft) {
+      if (yaw <= -maxTurnAngle) return 0.0;
+      return yaw > -minTurnAngle ? (yaw + minTurnAngle).abs() : 0.0;
+    }
+    
+    return null;
   }
 
   /// Valida la postura de la cara según el estado actual

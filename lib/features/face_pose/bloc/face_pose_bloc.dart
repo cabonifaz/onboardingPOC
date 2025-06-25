@@ -39,32 +39,74 @@ class FacePoseBloc extends Bloc<FacePoseEvent, FacePoseState> {
     Emitter<FacePoseState> emit,
   ) async {
     try {
-      // Skip if we're already processing
-      if (_isProcessing) return;
+      // Skip if we're already processing or in a terminal state
+      if (_isProcessing ||
+          state is FacePoseCompleted ||
+          state is FacePoseError ||
+          state is FacePosePaused) {
+        return;
+      }
 
-      final faceDetectedState = FacePoseDetected(
+      // Create a temporary face object for validation
+      final tempFace = Face(
+        boundingBox: const Rect.fromLTRB(0, 0, 0, 0),
+        landmarks: {},
+        contours: {},
         headEulerAngleY: event.headEulerAngleY,
         headEulerAngleX: event.headEulerAngleX,
-        headEulerAngleZ: event.headEulerAngleZ,
-        smilingProbability: event.smilingProbability,
-        leftEyeOpenProbability: event.leftEyeOpenProbability,
-        rightEyeOpenProbability: event.rightEyeOpenProbability,
+        headEulerAngleZ: event.headEulerAngleZ ?? 0,
+        smilingProbability: 0.5,
+        leftEyeOpenProbability: 0.9,
+        rightEyeOpenProbability: 0.9,
+        trackingId: null,
       );
 
-      await _onProcessFaceDetection(
-        ProcessFaceDetectionEvent(
-          face: faceDetectedState.face,
-        ),
-        emit,
-      );
-    } catch (e, stackTrace) {
-      log('Error en _onFaceDetected', error: e, stackTrace: stackTrace);
+      // Determine the current state type for validation
+      final currentState = state is FacePoseProcessing
+          ? (state as FacePoseProcessing).previousState.runtimeType
+          : state.runtimeType;
+
+      // Calculate remaining degrees for the current pose
+      final remainingDegrees = _getRemainingDegrees(tempFace, currentState);
+      final remainingDegreesMessage =
+          remainingDegrees != null && remainingDegrees > 0
+              ? ' (falta ${remainingDegrees.toStringAsFixed(1)}°)'
+              : '';
+
+      // Update the current state with new face data and remaining degrees message
+      if (state is FacePoseLookingStraight) {
+        emit((state as FacePoseLookingStraight).copyWith(
+          headEulerAngleY: event.headEulerAngleY,
+          remainingDegreesMessage: remainingDegreesMessage,
+        ));
+      } else if (state is FacePoseTurnedRight) {
+        emit((state as FacePoseTurnedRight).copyWith(
+          headEulerAngleY: event.headEulerAngleY,
+          remainingDegreesMessage: remainingDegreesMessage,
+        ));
+      } else if (state is FacePoseTurnedLeft) {
+        emit((state as FacePoseTurnedLeft).copyWith(
+          headEulerAngleY: event.headEulerAngleY,
+          remainingDegreesMessage: remainingDegreesMessage,
+        ));
+      } else if (state is FacePoseInitial) {
+        // Transition to looking straight state
+        emit(FacePoseLookingStraight(
+          headEulerAngleY: event.headEulerAngleY,
+          remainingDegreesMessage: remainingDegreesMessage,
+        ));
+      }
+
+      // Process the face detection
+      add(ProcessFaceDetectionEvent(face: tempFace));
+    } catch (e) {
+      log('Error in _onFaceDetected', error: e);
       emit(FacePoseError('Error al procesar la detección de cara: $e'));
     }
   }
 
   /// Validates if the face pose matches the current state requirements
-  bool _validateFacePose(Face face) {
+  bool _validateFacePose(Face face, Type stateType) {
     if (state is FacePoseError) {
       return false;
     }
@@ -74,17 +116,13 @@ class FacePoseBloc extends Bloc<FacePoseEvent, FacePoseState> {
       final areEyesOpen = FaceDetectionUtils.areEyesOpen(face);
 
       // Validate based on current state or previous state if in processing
-      final currentState = state is FacePoseProcessing
-          ? (state as FacePoseProcessing).previousState
-          : state;
-
-      if (currentState is FacePoseLookingStraight) {
+      if (stateType == FacePoseLookingStraight) {
         isPoseValid = FaceDetectionUtils.isLookingStraight(face);
-      } else if (currentState is FacePoseTurnedRight) {
+      } else if (stateType == FacePoseTurnedRight) {
         isPoseValid = FaceDetectionUtils.isTurnedRight(face);
-      } else if (currentState is FacePoseTurnedLeft) {
+      } else if (stateType == FacePoseTurnedLeft) {
         isPoseValid = FaceDetectionUtils.isTurnedLeft(face);
-      } else if (currentState is FacePoseInitial) {
+      } else if (stateType == FacePoseInitial) {
         return false;
       } else {
         return false;
@@ -96,78 +134,141 @@ class FacePoseBloc extends Bloc<FacePoseEvent, FacePoseState> {
     }
   }
 
+  /// Gets the remaining degrees message for the current state
+  double? _getRemainingDegrees(Face face, Type stateType) {
+    final remainingDegrees =
+        FaceDetectionUtils.getRemainingDegrees(face, stateType);
+
+    if (remainingDegrees == null || remainingDegrees <= 0) {
+      return null;
+    }
+
+    return remainingDegrees;
+  }
+
   Future<void> _onProcessFaceDetection(
     ProcessFaceDetectionEvent event,
     Emitter<FacePoseState> emit,
   ) async {
     try {
-      // Si estamos en estado completado, de error o pausado, no hacemos nada
+      // Skip if we're in a terminal state
       if (state is FacePoseCompleted ||
           state is FacePoseError ||
           state is FacePosePaused) {
         return;
       }
 
-      // Initialize flow if needed
-      if (state is FacePoseInitial) {
-        emit(const FacePoseLookingStraight());
-        return;
-      }
-
-      // Skip if we're in error state or already processing
-      if (state is FacePoseError || _isProcessing) {
-        return;
-      }
+      // Skip if we're already processing
+      if (_isProcessing) return;
 
       // Get the current state to work with
       final currentState = state is FacePoseProcessing
           ? (state as FacePoseProcessing).previousState
           : state;
 
+      // Calculate remaining degrees for the current pose
+      final remainingDegrees =
+          _getRemainingDegrees(event.face, currentState.runtimeType);
+      final remainingDegreesMessage =
+          remainingDegrees != null && remainingDegrees > 0
+              ? ' (falta ${remainingDegrees.toStringAsFixed(1)}°)'
+              : '';
+
+      // Update the current state with new face data and remaining degrees
+      FacePoseState? newState;
+      if (currentState is FacePoseLookingStraight) {
+        newState = currentState.copyWith(
+          headEulerAngleY: event.face.headEulerAngleY,
+          remainingDegreesMessage: remainingDegreesMessage,
+        );
+      } else if (currentState is FacePoseTurnedRight) {
+        newState = currentState.copyWith(
+          headEulerAngleY: event.face.headEulerAngleY,
+          remainingDegreesMessage: remainingDegreesMessage,
+        );
+      } else if (currentState is FacePoseTurnedLeft) {
+        newState = currentState.copyWith(
+          headEulerAngleY: event.face.headEulerAngleY,
+          remainingDegreesMessage: remainingDegreesMessage,
+        );
+      } else if (currentState is FacePoseInitial) {
+        // Transition to looking straight state
+        newState = FacePoseLookingStraight(
+          headEulerAngleY: event.face.headEulerAngleY,
+          remainingDegreesMessage: remainingDegreesMessage,
+        );
+      }
+
+      // If we couldn't determine a new state, return
+      if (newState == null) return;
+
+      // Emit the updated state
+      emit(newState);
+
       // Validate face pose
-      final isValidPose = _validateFacePose(event.face);
+      final isValidPose = _validateFacePose(event.face, newState.runtimeType);
 
       if (!isValidPose) {
-        // If we were in processing state, go back to the previous state
-        if (state is FacePoseProcessing) {
-          emit(currentState);
-        }
         return;
       }
 
+      // If we got here, the pose is valid
+      _isProcessing = true;
+
       try {
-        // Transition to the next state
-        if (currentState is FacePoseLookingStraight) {
-          // Emit the new state - UI will handle the capture
-          emit(const FacePoseTurnedRight());
-        } else if (currentState is FacePoseTurnedRight) {
-          // Emit the new state - UI will handle the capture
-          emit(const FacePoseTurnedLeft());
-        } else if (currentState is FacePoseTurnedLeft) {
+        // Transition to processing state
+        emit(FacePoseProcessing(
+          processingMessage: 'Procesando...',
+          progress: 0.0,
+          previousState: newState,
+          headEulerAngleY: event.face.headEulerAngleY,
+          remainingDegreesMessage: remainingDegreesMessage,
+        ));
+
+        // Add a small delay to show the processing state
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        // Determine the next state
+        FacePoseState nextState;
+        if (newState is FacePoseLookingStraight) {
+          nextState = FacePoseTurnedRight(
+            headEulerAngleY: event.face.headEulerAngleY,
+            remainingDegreesMessage: '',
+          );
+        } else if (newState is FacePoseTurnedRight) {
+          nextState = FacePoseTurnedLeft(
+            headEulerAngleY: event.face.headEulerAngleY,
+            remainingDegreesMessage: '',
+          );
+        } else if (newState is FacePoseTurnedLeft) {
           // All poses completed, verify all images
           try {
-            await Future.delayed(const Duration(seconds: 1));
             final images = await repository.verifyAllImages();
             await repository.submitFacePoseImages(username: username);
-            emit(FacePoseCompleted(
+            nextState = FacePoseCompleted(
               frontImagePath: images.frontImagePath!,
               rightImagePath: images.rightImagePath!,
               leftImagePath: images.leftImagePath!,
-            ));
+            );
           } catch (e) {
             log('Storage error in verifyAllImages', error: e);
-            emit(FacePoseError('Error al verificar las imágenes: $e'));
+            throw Exception('Error al verificar las imágenes: $e');
           }
+        } else {
+          throw Exception('Unexpected state: ${newState.runtimeType}');
         }
+
+        // Emit the next state
+        emit(nextState);
       } catch (e) {
         log('Error in _onProcessFaceDetection', error: e);
-        emit(FacePoseError('Error al procesar la detección de cara: $e'));
+        emit(FacePoseError('Error al procesar la detección: $e'));
       } finally {
         _isProcessing = false;
       }
     } catch (e) {
       _isProcessing = false;
-      log('Error en _onProcessFaceDetection', error: e);
+      log('Error in _onProcessFaceDetection', error: e);
       emit(FacePoseError('Error al procesar la detección: $e'));
     }
   }
@@ -177,6 +278,9 @@ class FacePoseBloc extends Bloc<FacePoseEvent, FacePoseState> {
     CaptureImageEvent event,
     Emitter<FacePoseState> emit,
   ) async {
+    if (_isProcessing) return;
+    _isProcessing = true;
+
     try {
       if (event.imagePath.isEmpty) {
         throw ImageNotFoundException(
@@ -188,34 +292,92 @@ class FacePoseBloc extends Bloc<FacePoseEvent, FacePoseState> {
           ? (state as FacePoseProcessing).previousState
           : state;
 
-      // Save the image based on the current state
-      if (currentState is FacePoseLookingStraight) {
-        await repository.saveFrontImage(event.imagePath);
-      } else if (currentState is FacePoseTurnedRight) {
-        await repository.saveRightImage(event.imagePath);
-      } else if (currentState is FacePoseTurnedLeft) {
-        await repository.saveLeftImage(event.imagePath);
-      } else {
-        throw StateError(
-            'Estado actual no válido para capturar imagen: ${currentState.runtimeType}');
-      }
+      // Get the current head angle from the state if available
+      final currentHeadAngle =
+          currentState is FacePoseState ? currentState.headEulerAngleY : 0.0;
 
-      // After saving, check if we have all images
+      // Save the image based on the current state
       try {
-        final images = await repository.verifyAllImages();
-        if (images.isComplete) {
-          emit(FacePoseCompleted(
-            frontImagePath: images.frontImagePath!,
-            rightImagePath: images.rightImagePath!,
-            leftImagePath: images.leftImagePath!,
+        if (currentState is FacePoseLookingStraight) {
+          await repository.saveFrontImage(event.imagePath);
+          // Transition to processing state
+          emit(FacePoseProcessing(
+            processingMessage: 'Guardando imagen frontal...',
+            progress: 0.5,
+            previousState: currentState,
+            headEulerAngleY: currentHeadAngle,
           ));
+          await Future.delayed(const Duration(milliseconds: 500));
+          // Transition to next state
+          emit(FacePoseTurnedRight(
+            headEulerAngleY: currentHeadAngle,
+            remainingDegreesMessage: 'Gira la cabeza hacia la derecha',
+          ));
+        } else if (currentState is FacePoseTurnedRight) {
+          await repository.saveRightImage(event.imagePath);
+          // Transition to processing state
+          emit(FacePoseProcessing(
+            processingMessage: 'Guardando perfil derecho...',
+            progress: 0.5,
+            previousState: currentState,
+            headEulerAngleY: currentHeadAngle,
+          ));
+          await Future.delayed(const Duration(milliseconds: 500));
+          // Transition to next state
+          emit(FacePoseTurnedLeft(
+            headEulerAngleY: currentHeadAngle,
+            remainingDegreesMessage: 'Gira la cabeza hacia la izquierda',
+          ));
+        } else if (currentState is FacePoseTurnedLeft) {
+          await repository.saveLeftImage(event.imagePath);
+          // Transition to processing state
+          emit(FacePoseProcessing(
+            processingMessage: 'Guardando perfil izquierdo...',
+            progress: 0.5,
+            previousState: currentState,
+            headEulerAngleY: currentHeadAngle,
+          ));
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          // Verify all images and complete the flow
+          try {
+            final images = await repository.verifyAllImages();
+            if (images.isComplete) {
+              await repository.submitFacePoseImages(username: username);
+              emit(FacePoseCompleted(
+                frontImagePath: images.frontImagePath!,
+                rightImagePath: images.rightImagePath!,
+                leftImagePath: images.leftImagePath!,
+              ));
+            } else {
+              throw IncompleteImagesException(
+                  missingPoses: ['Faltan imágenes por capturar']);
+            }
+          } catch (e) {
+            log('Error verifying images', error: e);
+            rethrow;
+          }
+        } else {
+          throw StateError(
+              'Estado actual no válido para capturar imagen: ${currentState.runtimeType}');
         }
-      } on IncompleteImagesException {
-        // This is expected when not all images are captured yet
+      } catch (e) {
+        log('Error saving image', error: e);
+        rethrow;
       }
+    } on ImageNotFoundException catch (e) {
+      log('Image not found error', error: e);
+      emit(FacePoseError(e.toString()));
+    } on StateError catch (e) {
+      log('State error in _onCaptureImage', error: e);
+      emit(FacePoseError(e.toString()));
+    } on IncompleteImagesException catch (e) {
+      log('Incomplete images', error: e);
+      emit(FacePoseError(e.toString()));
     } catch (e, stackTrace) {
-      log('Error en _onCaptureImage', error: e, stackTrace: stackTrace);
-      emit(FacePoseError('Error al procesar la imagen: $e'));
+      log('Unexpected error in _onCaptureImage',
+          error: e, stackTrace: stackTrace);
+      emit(FacePoseError('Error inesperado al procesar la imagen: $e'));
     } finally {
       _isProcessing = false;
     }
