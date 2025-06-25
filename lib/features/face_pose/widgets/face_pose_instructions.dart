@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_fractal_onboarding_poc/features/app/face_pose/bloc/face_pose_bloc.dart';
+import 'package:flutter_fractal_onboarding_poc/features/face_pose/bloc/face_pose_bloc.dart';
 
 class FacePoseInstructions extends StatelessWidget {
   final FacePoseState state;

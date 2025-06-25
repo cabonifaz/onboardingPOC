@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_fractal_onboarding_poc/features/username/bloc/username_bloc.dart';
 import 'package:flutter_fractal_onboarding_poc/features/username/view/username_view.dart';
 
 class App extends StatelessWidget {
@@ -6,7 +8,10 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const AppBody();
+    return BlocProvider(
+      create: (context) => UsernameBloc(),
+      child: const AppBody(),
+    );
   }
 }
 

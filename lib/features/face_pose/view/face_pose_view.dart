@@ -5,12 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_fractal_onboarding_poc/core/utils/camera_utils.dart';
 import 'package:flutter_fractal_onboarding_poc/core/utils/face_detection_utils.dart';
-import 'package:flutter_fractal_onboarding_poc/features/app/face_pose/bloc/face_pose_bloc.dart';
-import 'package:flutter_fractal_onboarding_poc/features/app/face_pose/repositories/face_pose_repository.dart';
-import 'package:flutter_fractal_onboarding_poc/features/app/face_pose/service/face_pose_storage.dart';
-import 'package:flutter_fractal_onboarding_poc/features/app/face_pose/widgets/face_pose_completed_view.dart';
-import 'package:flutter_fractal_onboarding_poc/features/app/face_pose/widgets/face_pose_error_view.dart';
-import 'package:flutter_fractal_onboarding_poc/features/app/face_pose/widgets/face_pose_instructions.dart';
+import 'package:flutter_fractal_onboarding_poc/features/face_pose/bloc/face_pose_bloc.dart';
+import 'package:flutter_fractal_onboarding_poc/features/face_pose/repositories/face_pose_repository.dart';
+import 'package:flutter_fractal_onboarding_poc/features/face_pose/service/face_pose_storage.dart';
+import 'package:flutter_fractal_onboarding_poc/features/face_pose/widgets/face_pose_completed_view.dart';
+import 'package:flutter_fractal_onboarding_poc/features/face_pose/widgets/face_pose_error_view.dart';
+import 'package:flutter_fractal_onboarding_poc/features/face_pose/widgets/face_pose_instructions.dart';
+import 'package:flutter_fractal_onboarding_poc/features/username/bloc/username_bloc.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -21,6 +22,7 @@ class FacePoseView extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => FacePoseBloc(
+        username: context.read<UsernameBloc>().state.username,
         repository: FacePoseRepository(
           storageService: FacePoseStorageService()..clearAllPaths(),
         ),

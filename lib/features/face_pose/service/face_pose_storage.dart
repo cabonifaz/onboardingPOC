@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:developer';
-import 'package:flutter_fractal_onboarding_poc/features/app/face_pose/models/face_pose_images.dart';
+import 'package:flutter_fractal_onboarding_poc/features/face_pose/models/face_pose_images.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class FacePoseStorageService {

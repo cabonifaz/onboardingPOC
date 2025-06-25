@@ -9,8 +9,8 @@ class UsernameView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => UsernameBloc(),
+    return BlocProvider.value(
+      value: context.read<UsernameBloc>(),
       child: const UsernameBody(),
     );
   }

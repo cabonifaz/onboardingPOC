@@ -1,13 +1,74 @@
+import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter_fractal_onboarding_poc/features/app/face_pose/exceptions/face_pose_exceptions.dart';
-import 'package:flutter_fractal_onboarding_poc/features/app/face_pose/models/face_pose_images.dart';
-import 'package:flutter_fractal_onboarding_poc/features/app/face_pose/service/face_pose_storage.dart';
+import 'package:flutter_fractal_onboarding_poc/features/face_pose/exceptions/face_pose_exceptions.dart';
+import 'package:flutter_fractal_onboarding_poc/features/face_pose/models/face_pose_images.dart';
+import 'package:flutter_fractal_onboarding_poc/features/face_pose/models/pose.dart';
+import 'package:flutter_fractal_onboarding_poc/features/face_pose/service/face_pose_api.dart';
+import 'package:flutter_fractal_onboarding_poc/features/face_pose/service/face_pose_storage.dart';
 
 class FacePoseRepository {
-  const FacePoseRepository({required this.storageService});
+  FacePoseRepository({
+    required this.storageService,
+    FaceEnrollmentService? enrollmentService,
+  }) : _enrollmentService = enrollmentService ?? FaceEnrollmentService();
 
   final FacePoseStorageService storageService;
+  final FaceEnrollmentService _enrollmentService;
+
+  /// Envía las imágenes al servidor
+  Future<bool> submitFacePoseImages({
+    required String username,
+  }) async {
+    try {
+      final images = await storageService.getFacePoseImages();
+
+      // Verificar que todas las imágenes estén presentes
+      if (images.frontImagePath == null ||
+          images.rightImagePath == null ||
+          images.leftImagePath == null) {
+        throw FacePoseException('Faltan imágenes por capturar');
+      }
+
+      // Leer y codificar las imágenes a base64
+      final frontImageBytes = await File(images.frontImagePath!).readAsBytes();
+      final rightImageBytes = await File(images.rightImagePath!).readAsBytes();
+      final leftImageBytes = await File(images.leftImagePath!).readAsBytes();
+
+      final poses = [
+        Pose(
+          idTipoPerfil: 1, // Frontal
+          foto64: base64Encode(frontImageBytes),
+        ),
+        Pose(
+          idTipoPerfil: 2, // Lateral izquierdo
+          foto64: base64Encode(leftImageBytes),
+        ),
+        Pose(
+          idTipoPerfil: 3, // Lateral derecho
+          foto64: base64Encode(rightImageBytes),
+        ),
+      ];
+
+      // Enviar al servidor
+      final success = await _enrollmentService.enrollFaces(
+        username: username,
+        poses: poses,
+      );
+
+      if (!success) {
+        throw FacePoseException('Error al enviar las imágenes al servidor');
+      }
+
+      return true;
+    } on FacePoseException {
+      rethrow;
+    } catch (e, stackTrace) {
+      throw FacePoseException(
+        'Error al enviar las imágenes: $e',
+      )..stackTrace = stackTrace;
+    }
+  }
 
   /// Guarda la imagen frontal y devuelve las imágenes actualizadas
   Future<FacePoseImages> saveFrontImage(String imagePath) async {

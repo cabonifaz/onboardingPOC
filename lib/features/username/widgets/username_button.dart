@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_fractal_onboarding_poc/features/app/face_pose/view/face_pose_view.dart';
+import 'package:flutter_fractal_onboarding_poc/features/face_pose/view/face_pose_view.dart';
 import '../bloc/username_bloc.dart';
 
 class UsernameButton extends StatelessWidget {

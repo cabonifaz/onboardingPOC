@@ -1,5 +1,5 @@
 import 'dart:developer';
-import 'package:flutter_fractal_onboarding_poc/features/app/face_pose/bloc/face_pose_bloc.dart';
+import 'package:flutter_fractal_onboarding_poc/features/face_pose/bloc/face_pose_bloc.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 class FaceDetectionUtils {

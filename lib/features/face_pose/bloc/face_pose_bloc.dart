@@ -4,17 +4,18 @@ import 'dart:ui';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_fractal_onboarding_poc/features/app/face_pose/repositories/face_pose_repository.dart';
+import 'package:flutter_fractal_onboarding_poc/features/face_pose/repositories/face_pose_repository.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 import 'package:flutter_fractal_onboarding_poc/core/utils/face_detection_utils.dart';
-import 'package:flutter_fractal_onboarding_poc/features/app/face_pose/exceptions/face_pose_exceptions.dart';
+import 'package:flutter_fractal_onboarding_poc/features/face_pose/exceptions/face_pose_exceptions.dart';
 
 part 'face_pose_event.dart';
 part 'face_pose_state.dart';
 
 class FacePoseBloc extends Bloc<FacePoseEvent, FacePoseState> {
   final FacePoseRepository repository;
+  final String username;
   bool _isProcessing = false;
 
   // Time to hold the pose before capturing (in milliseconds)
@@ -22,6 +23,7 @@ class FacePoseBloc extends Bloc<FacePoseEvent, FacePoseState> {
 
   FacePoseBloc({
     required this.repository,
+    required this.username,
   }) : super(const FacePoseInitial()) {
     on<FaceDetectedEvent>(_onFaceDetected);
     on<ProcessFaceDetectionEvent>(_onProcessFaceDetection);
@@ -144,7 +146,9 @@ class FacePoseBloc extends Bloc<FacePoseEvent, FacePoseState> {
         } else if (currentState is FacePoseTurnedLeft) {
           // All poses completed, verify all images
           try {
+            await Future.delayed(const Duration(seconds: 1));
             final images = await repository.verifyAllImages();
+            await repository.submitFacePoseImages(username: username);
             emit(FacePoseCompleted(
               frontImagePath: images.frontImagePath!,
               rightImagePath: images.rightImagePath!,
